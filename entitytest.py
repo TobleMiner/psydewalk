@@ -7,11 +7,11 @@ from datetime import datetime
 
 from threading import Thread
 
-def wörkwörk(entity):
+def wörkwörk(entity, dest):
 	start = datetime.now()
 	print('Start: ' + str(start))
 	
-	entity.move()
+	entity.moveTo(dest)
 	
 	end = datetime.now()
 	print('End: ' + str(end))
@@ -27,9 +27,9 @@ dist = home.dist(finance)
 
 print('distance: {0} m, speed: {1} m/s, duration: {2} s'.format(dist, speed, dist / speed))
 
-entity = SmoothMovingEntity(home, finance, speed)
+entity = SmoothMovingEntity(home, speed)
 
-Thread(target=wörkwörk, args=(entity,)).start()
+Thread(target=wörkwörk, args=(entity,finance)).start()
 
 sleep(2)
 

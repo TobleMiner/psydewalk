@@ -1,5 +1,7 @@
 import math
 
+EARTH_RADIUS = 6378137
+
 class Coordinate():
 	def __init__(self, lat=0, lng=0):
 		self.lat = lat
@@ -32,4 +34,4 @@ class Coordinate():
 		dlng = math.radians(coord.lng - self.lng)
 		fact = math.sin(dlat / 2) * math.sin(dlat / 2) + math.cos(math.radians(self.lat)) * math.cos(math.radians(coord.lat)) * math.sin(dlng / 2) * math.sin(dlng / 2)
 		fact = 2 * math.atan2(math.sqrt(fact), math.sqrt(1 - fact))
-		return 6378137 * fact
+		return EARTH_RADIUS * fact
