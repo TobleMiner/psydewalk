@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-from geo import Coordinate
+from psydewalk.geo import Coordinate
 
 home = Coordinate(54.355420, 10.135980)
 print(home)

@@ -1,7 +1,7 @@
 #!/bin/env python3
 
-from entity import *
-from geo import Coordinate
+from psydewalk.entity import *
+from psydewalk.geo import Coordinate
 
 from datetime import datetime
 
