@@ -1,5 +1,7 @@
 import random
 
+# Behaviors triggered by changing behavior of a human 
+
 class Behavior():
 	"""Some behavior"""
 	def __init__(self):
