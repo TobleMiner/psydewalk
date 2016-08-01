@@ -7,5 +7,5 @@ class Simulation():
 	def __init__(self):
 		super(Simulation, self).__init__()
 
-	def getDatetime():
+	def getDatetime(self):
 		return datetime.now()

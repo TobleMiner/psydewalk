@@ -1,4 +1,4 @@
-from datetime import time, timedelta
+from datetime import time, timedelta, datetime
 import random
 
 class BehaviorManager():
@@ -39,18 +39,23 @@ class BehaviorManager():
 				string += "\t\t{0}\n".format(member.__name__)
 		return string
 
-	def getNextBehavior(self, behavior=None):
+	def getNextBehavior(self, behavior):
 		ancestors = []
 		now = self.simulation.getDatetime()
-		dow = now.date().weekday()
+		date = now.date()
+		dow = date.weekday()
 		time = now.time()
-		groups = [] # Collect group information to calculate likeleyhood
-		for ancestor in self.after[type(behavior)]:
+		groups = {} # Collect group information to calculate likeleyhood
+		for ancestor in self.after[behavior]:
 			if not dow in ancestor.DOW: # TODO?HIGH: Not going to work. Must do something to wrap around @ midnight
 				continue
 			begin, end = ancestor.getTimeframe(ancestor, dow)
+			eventdate = now
 			if time > begin: # TODO?HIGH: Not sufficient. Do something with the date, too
+				eventdate += timedelta(days=1)
 				continue
+			begin = datetime.combine(eventdate.date(), begin)
+			end = datetime.combine(eventdate.date(), end)
 			if not ancestor.GROUP:
 				ancestors.append((ancestor, begin + (end - begin) * random.random())) # TODO?MID: Don't ignore which behavior would be next
 				continue
@@ -63,13 +68,19 @@ class BehaviorManager():
 		if isinstance(ancestor, list): # We have a group
 			probabilitysum = 0
 			for behavior in ancestor:
-				probabilitysum += ancestor.GROUP[1]
+				probabilitysum += behavior.GROUP[1]
 			targetval = random.random() * probabilitysum
+			print(targetval)
 			for behavior in ancestor:
-				targetval -= ancestor.GROUP[1]
+				targetval -= behavior.GROUP[1]
 				if targetval > 0:
 					continue
-				begin, end = behavior.getTimeframe(ancestor, dow)
+				begin, end = behavior.getTimeframe(behavior, dow)
+				eventdate = now
+				if time > begin:
+					eventdate += timedelta(days=1)
+				begin = datetime.combine(eventdate.date(), begin)
+				end = datetime.combine(eventdate.date(), end)
 				return behavior, begin + (end - begin) * random.random()
 		return ancestor[0], ancestor[1]
 
