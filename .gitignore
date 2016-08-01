@@ -93,3 +93,6 @@ ENV/
 
 # API keys
 .apikeys
+
+# osm map cache
+cache/
