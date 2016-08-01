@@ -22,8 +22,9 @@ class TrackingRequestHandler(BaseHTTPRequestHandler):
 		if not id in tracked:
 			self.wfile.write(b"<html><body>Unknown id</body></html>")
 			return
-		coord = tracked[id].getLocation()
-		self.wfile.write(bytes('{0};{1}'.format(coord.lat, coord.lng), 'UTF-8'))
+		entity = tracked[id]
+		coord = entity.getLocation()
+		self.wfile.write(bytes('{0};{1};{2}'.format(coord.lat, coord.lng, entity.getSpeed()), 'UTF-8'))
 
 	def do_HEAD(self):
 		self._set_headers()

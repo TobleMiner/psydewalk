@@ -18,6 +18,8 @@ asdf = Pedestrian(Coordinate(54.355561, 10.131721), speed)
 tracking.track('me', asdf)
 tracking.runInBackground()
 
+asdf.navigateTo(Coordinate(54.336107, 10.076489))
+
 asdf.run()
 
 sleep(1)

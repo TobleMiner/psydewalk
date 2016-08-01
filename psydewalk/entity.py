@@ -20,6 +20,9 @@ class MovingEntity(Entity):
 		self.logger = logging.getLogger(logger)
 		self.setSpeed(speed)
 
+	def getSpeed(self):
+		return self.speed
+
 	def setSpeed(self, speed):
 		self.logger.debug('Setting speed: {0} m/s'.format(speed))
 		self.speed = speed
@@ -41,10 +44,13 @@ class SmoothMovingEntity(MovingEntity):
 		self.speed = 0
 		super().__init__(loc, speed, logger)
 
-	def setSpeed(self, speed):
-		self.speeddelta = speed - self.speed
-		self.logger.debug('Setting speed: {0} m/s, delta: {1} m/s'.format(speed, self.speeddelta))
-		self.maxspeed = speed
+	def setSpeed(self, speed, temp=False):
+		if temp:
+			self.speed = speed
+		else:
+			self.maxspeed = speed
+		self.speeddelta = self.maxspeed - self.speed
+		self.logger.debug('Setting speed: {0} m/s, delta: {1} m/s ({2})'.format(speed, self.speeddelta, 'temp' if temp else 'perm'))
 		self.speedaproxcnt = 0
 
 	def moveTo(self, dest, interval=100):
