@@ -9,18 +9,19 @@ from pyroutelib2.loadOsm import LoadOsm
 import asyncio
 from asyncio import Queue
 from threading import Thread
+from time import sleep
 
 
-class Pedestrian(SmoothMovingEntity, DataProvider, Jitter):
-	def __init__(self, loc=Coordinate(), speed=1.67, logger='pedestrian'):
+class Driver(SmoothMovingEntity, DataProvider, Jitter):
+	def __init__(self, loc=Coordinate(), speed=13.89, logger='driver'):
 		DataProvider.__init__(self)
 		Jitter.__init__(self)
 		SmoothMovingEntity.__init__(self, loc, speed, logger)
 		self.loop = asyncio.get_event_loop()
 		self.waypoints = Queue()
-		self.osm = LoadOsm("foot")
+		self.osm = LoadOsm("car")
 
-	def navigateTo(self, coord):
+	def navigateTo(self, coord): # TODO?MID Consider max speed of roads and traffic lights
 		start = self.osm.findNode(self.loc)
 		end = self.osm.findNode(coord)
 		router = Router(self.osm)
