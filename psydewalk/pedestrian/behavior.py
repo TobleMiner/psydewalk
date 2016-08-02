@@ -1,6 +1,6 @@
 import random
 
-# Behaviors triggered by changing behavior of a human 
+# Behaviors triggered by changing behavior of a human
 
 class Behavior():
 	"""Some behavior"""

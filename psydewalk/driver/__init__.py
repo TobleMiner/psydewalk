@@ -9,7 +9,6 @@ from pyroutelib2.loadOsm import LoadOsm
 import asyncio
 from asyncio import Queue
 from threading import Thread
-from time import sleep
 
 
 class Driver(SmoothMovingEntity, DataProvider, Jitter):
