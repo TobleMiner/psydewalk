@@ -1,33 +1,56 @@
+from psydewalk.pedestrian import Pedestrian
+
 from datetime import time, timedelta, datetime
 import random
+import logging
 
 class BehaviorManager():
-	def __init__(self, simulation):
-		self.simulation = simulation
+	def __init__(self, human, logger='Behavior'):
+		self.logger = logging.getLogger(logger)
+		self.human = human
+		self.behaviors = []
+		self.logger.info('Collecting behaviors')
+		self.collectBehaviors(Behavior)
 		self.after = {}
+		self.logger.info('Building dependency graph')
 		self.buildDependencyGraph(Behavior)
 		self.groups = {}
+		self.logger.info('Building group graph')
 		self.buildGroupGraph(Behavior)
+		self.logger.info('Data assembeld')
+		self.logger.debug(repr(self))
+
+	def collectBehaviors(self, cls):
+		if (isinstance(cls.AFTER, list) and len(cls.AFTER) > 0) or (not isinstance(cls.AFTER, list) and cls.AFTER):
+			self.logger.debug(cls.__name__)
+			self.behaviors.append(cls)
+		for child in cls.__subclasses__():
+			self.collectBehaviors(child)
 
 	def buildDependencyGraph(self, cls):
 		for cls_ in cls.AFTER if isinstance(cls.AFTER, list) else [cls.AFTER]:
 			if not cls_ in self.after:
 				self.after[cls_] = []
 			self.after[cls_].append(cls)
+			self.logger.debug('{0} -> {1}'.format(cls_.__name__, cls.__name__))
 		for child in cls.__subclasses__():
 			self.buildDependencyGraph(child)
 
 	def buildGroupGraph(self, cls):
 		if cls.GROUP:
 			key = cls.GROUP[0]
+			self.logger.debug('{0} in {1}'.format(cls.__name__, key))
 			if not key in self.groups:
 				self.groups[key] = []
 			self.groups[key].append(cls)
 		for child in cls.__subclasses__():
 			self.buildGroupGraph(child)
 
+	def getRandomBehavior(self):
+		return random.choice(self.behaviors)
+
 	def __repr__(self):
-		string = "Dependencies:\n"
+		string = "\nDependencies:\n"
 		for behavior in self.after:
 			string += "\t{0}:\n".format(behavior.__name__)
 			for ancestor in self.after[behavior]:
@@ -39,9 +62,9 @@ class BehaviorManager():
 				string += "\t\t{0}\n".format(member.__name__)
 		return string
 
-	def getNextBehavior(self, behavior):
+	def getNextBehavior(self, behavior): #TODO My eyes are bleeding. Redesign function
 		ancestors = []
-		now = self.simulation.getDatetime()
+		now = self.human.getSimulation().getDatetime()
 		date = now.date()
 		dow = date.weekday()
 		time = now.time()
@@ -51,7 +74,7 @@ class BehaviorManager():
 				continue
 			begin, end = ancestor.getTimeframe(ancestor, dow)
 			eventdate = now
-			if time > begin: # TODO?HIGH: Not sufficient. Do something with the date, too
+			if time > begin:
 				eventdate += timedelta(days=1)
 				continue
 			begin = datetime.combine(eventdate.date(), begin)
@@ -70,7 +93,6 @@ class BehaviorManager():
 			for behavior in ancestor:
 				probabilitysum += behavior.GROUP[1]
 			targetval = random.random() * probabilitysum
-			print(targetval)
 			for behavior in ancestor:
 				targetval -= behavior.GROUP[1]
 				if targetval > 0:
@@ -89,6 +111,7 @@ class Behavior():
 	"""docstring for Behavior"""
 	AFTER = []
 	GROUP = None
+	MODE = Pedestrian
 
 	def getTimeframe(cls, dow):
 		if isinstance(cls.ACTIVATE, list):
@@ -106,8 +129,8 @@ class Behavior():
 class DriveTo(Behavior):
 	"""docstring for DriveTo"""
 	def __init__(self, prev, next): # Determine where to drive form prev vs next behavior
-		super(DriveTo, self).__init__()
-		self.arg = arg
+		super(DriveTo, self).__init__(self, prev, next)
+
 
 class Break(Behavior):
 	"""docstring for Break""" # Generic break
@@ -120,10 +143,11 @@ class Work(Behavior): # TODO Build sequencing for sub-behaviors (drive to work, 
 	DOW = range(0, 4)
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
+	MODE = Pedestrian
 
 	def _init_deps():
 		Work.AFTER = Sleep
-		Work.ORDER = [DriveTo, Work.DoWork, Break, Work.DoWork, DriveTo] # No static references on ordered sub-behaviors, they are instanciated when they are needed
+		Work.ORDER = [DriveTo, Work.DoWork, Break, Work.DoWork, DriveTo]
 
 	def __init__(self, arg):
 		super(Work, self).__init__()
