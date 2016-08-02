@@ -3,7 +3,7 @@ PSYDEWALK
 
 Notes:
 - Behaviors have a loose ordering via AFTER dependency
-- Behaviors are carried out at certain places
+- Some Behaviors are carried out at certain places, others can have varying coordinates (e.g. work vs some bus stop)
 - Transports connect places
 - Transports use behaviors to simulate movement
 - Each behavior has a associated mode, e.g. Pedestrian
