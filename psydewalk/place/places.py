@@ -1,10 +1,10 @@
 from psydewalk.place import Place
 from psydewalk.geo import Coordinate
-from psydewalk.transport.transports import *
 
 class Home(Place): # TODO?LOW Unserialize palces from human readable config file
 	"""docstring for Home"""
 	def __init__(self):
+		from psydewalk.transport.transports import Bike, Bus, Foot, Car
 		super(Home, self).__init__([Bike, Bus, Foot, Car])
 		self.loc = Coordinate(54.358245, 10.130768)
 		self.subplaces = {
@@ -16,6 +16,7 @@ class Home(Place): # TODO?LOW Unserialize palces from human readable config file
 class Work(Place): # TODO?LOW Unserialize palces from human readable config file
 	"""docstring for Work"""
 	def __init__(self):
+		from psydewalk.transport.transports import Bike, Bus, Foot, Car
 		super(Work, self).__init__([Bike, Bus, Foot, Car])
 		self.loc = Coordinate(54.338405, 10.122131)
 		self.subplaces = {

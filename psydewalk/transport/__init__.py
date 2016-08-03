@@ -18,7 +18,7 @@ class TransportRegistry():
 	def collectTransports(self, cls=Transport):
 		if cls.BEHAVIOR:
 			self.transports.append(cls)
-		for child in self.transports.__subclasses__:
+		for child in cls.__subclasses__():
 			self.collectTransports(child)
 
 	def registerTransport(self, transport):
@@ -40,7 +40,7 @@ class TransportRegistry():
 
 	def getTransports(self, type=None):
 		if not type:
-			return self.registry
+			return self.transports
 		transports = []
 		for transport in self.registry:
 			if isinstance(transport, type):

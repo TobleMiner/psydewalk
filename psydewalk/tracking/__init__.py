@@ -50,7 +50,7 @@ class TrackingServer():
 	def run(self):
 		server_address = (self.host, self.port)
 		httpd = HTTPServer(server_address, TrackingRequestHandler)
-		print('Starting httpd...')
+		print('Starting tracking server...')
 		httpd.serve_forever()
 
 	def runInBackground(self):

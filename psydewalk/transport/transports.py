@@ -1,16 +1,16 @@
 from psydewalk.transport import Transport
-from psydewalk.behavior.behaviors import *
+from psydewalk.place.places import *
 
 class Car(Transport): # TODO?LOW Unserialize transports from human readable config file
 	"""docstring for Car"""
-	BEHAVIOR = DriveTo
+	BEHAVIOR = 'DriveTo'
 	PLACE = ParkingLot
 
 	def __init__(self, registry):
-		super(Car, self).__init__(registry) # TODO?HIGH Implement behaviors
+		super(Car, self).__init__(registry)
 
 class Bus(Transport):
-	BEHAVIOR = DriveTo
+	BEHAVIOR = 'DriveTo'
 	PLACE = BusStop
 
 	"""docstring for Bus"""
@@ -18,7 +18,7 @@ class Bus(Transport):
 		super(Bus, self).__init__()
 
 class Foot(Transport):
-	BEHAVIOR = WalkTo
+	BEHAVIOR = 'WalkTo'
 	PLACE = None
 
 	"""docstring for Foot"""
@@ -26,7 +26,7 @@ class Foot(Transport):
 		super(Foot, self).__init__()
 
 class Bike(Transport):
-	BEHAVIOR = RideTo
+	BEHAVIOR = 'DriveTo' # RideTo
 	PLACE = BikeRack
 
 	"""docstring for Bike"""

@@ -3,10 +3,13 @@ from psydewalk.driver import Driver
 from psydewalk.place.places import *
 from psydewalk.data import LocationProvider, PlaceProvider
 from psydewalk.util.list import intersect
+from psydewalk.exception import MethodNotImplementedException, NoTransportException
+import psydewalk.place.places as PLACES
 
 from time import sleep
 from datetime import time, timedelta, datetime
 import random
+import logging
 
 class Behavior():
 	"""docstring for Behavior"""
@@ -28,8 +31,6 @@ class Behavior():
 		self.mngr = mngr
 		self.parent = parent
 		self.queue = []
-		for sub in self.ORDER:
-			self.queue.append(sub(mngr, self))
 		self.init()
 
 	def init(self):
@@ -38,45 +39,75 @@ class Behavior():
 
 	def initPrev(self, prev):
 		"""Initializes this instance based on the previous behavior"""
-		pass
+
+	def initSub(self):
+		for sub in self.ORDER:
+			self.queue.append(sub(self.mngr, self))
 
 	def subNext(self):
 		if len(self.queue) == 0:
+			self.run()
 			if self.parent:
 				self.parent.subNext()
 			else:
 				self.mngr.runNext(self)
 		sub = self.queue.pop(0)
-		sub.run()
+		sub._run()
+
+	def _run(self):
+		self.mngr.setBehavior(self)
+		self.subNext()
 
 	def run(self):
-		self.done()
-
-	def done(self):
-		self.subNext()
+		pass
 
 class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
 
 	def __init__(self, mngr, parent=None):
 		super(LocatedBehavior, self).__init__(mngr, parent)
-		self.setLoc()
+		self.setLocation()
 
-	def setLoc(self):
+	def setLocation(self):
+		print(self)
 		raise MethodNotImplementedException()
+
+	def getLocation(self):
+		return self.loc
 
 	def initPrev(self, prev):
 		sub = TransportBehavior(self.mngr, self)
 		sub.initTransport(prev, self)
+		self.queue.append(sub)
+
+class PlacedBehavior(Behavior, PlaceProvider):
+	"""docstring for PlacedBehavior"""
+
+	def __init__(self, mngr, parent=None):
+		super(PlacedBehavior, self).__init__(mngr, parent)
+		self.setPlace()
+
+	def setPlace(self):
+		raise MethodNotImplementedException()
+
+	def getPlace(self):
+		return self.place
+
+	def initPrev(self, prev):
+		sub = TransportBehavior(self.mngr, self)
+		sub.initTransport(prev, self)
+		self.queue.append(sub)
 
 
 class TransportBehavior(Behavior):
 	"""docstring for TransportBehavior"""
-	def __init__(self, mngr, parent=None):
+	def __init__(self, mngr, parent=None, logger='transport'):
 		super(TransportBehavior, self).__init__(mngr, parent)
+		self.logger = logging.getLogger(logger)
 
 	def initTransport(self, frm, to):
-		transports = self.mngr.getSimulation().getTransportRegistry().getTransports()
+		self.logger.debug('Transport: {0} -> {1}'.format(frm, to))
+		transports = self.mngr.getHuman().getSimulation().getTransportRegistry().getTransports()
 		locfrm = frm
 		if isinstance(frm, PlaceProvider):
 			place = frm.getPlace()
@@ -90,7 +121,7 @@ class TransportBehavior(Behavior):
 		if isinstance(to, PlaceProvider):
 			place = to.getPlace()
 			transports = intersect(transports, place.getSupportedTransports())
-			locto = palce.getLocation()
+			locto = place.getLocation()
 		elif isinstance(to, LocationProvider):
 			locto = to.getLocation()
 		else:
@@ -98,29 +129,38 @@ class TransportBehavior(Behavior):
 		if len(transports) == 0:
 			raise NoTransportException()
 		transport = random.choice(transports)
+		behavior = self.mngr.getBehavior(transport.BEHAVIOR)
 		if transport.PLACE:
+			start = locfrm
 			if isinstance(frm, PlaceProvider):
-				self.getEndpointfromPlace(frm, transport)
+				start = self.getEndpointfromPlace(frm.getPlace(), transport)
+				self.queue.append(WalkTo(self.mngr, self, start))
+			end = locto
+			if isinstance(to, PlaceProvider):
+				end = self.getEndpointfromPlace(to.getPlace(), transport)
+				self.queue.append(behavior(self.mngr, self, end))
+				self.queue.append(WalkTo(self.mngr, self, locto))
+			else:
+				self.queue.append(behavior(self.mngr, self, end))
 		else:
-			self.queue.append(transport.BEHAVIOR(self.mngr, self, locfrm, locto))
+			self.queue.append(behavior(self.mngr, self, locto))
 
 	def getEndpointfromPlace(self, place, transport):
 		endpoint = place.getTransportEndpoint(transport)
 		if isinstance(endpoint, list):
-			return random.choice(endpoint)
-		return endpoint
+			return random.choice(endpoint).getLocation()
+		return endpoint.getLocation()
 
 
 class MoveTo(Behavior):
 	"""docstring for MoveTo"""
 
-	def __init__(self, mngr, next, loc): # Determine where to drive from location of next behavior
-		super().__init__(mngr, next)
-		self.loc = loc
+	def __init__(self, mngr, parent, to): # Determine where to drive from location of next behavior
+		super().__init__(mngr, parent)
+		self.dest = to
 
 	def run(self):
-		self.mngr.getHuman().navigateTo(self.loc)
-		self.done()
+		self.mngr.getHuman().navigateTo(self.dest)
 
 class WalkTo(MoveTo):
 	"""docstring for moveTo"""
@@ -134,33 +174,28 @@ class Break(Behavior):
 	"""docstring for Break""" # Generic break
 	MODE = Pedestrian
 	DURATION = (1, 10)
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
+
+	def init(self):
 		self.duration = random.randint(self.DURATION[0], self.DURATION[1])
 
 	def run(self):
 		sleep(self.duration)
-		self.done()
 
-class Work(LocatedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
+class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
 	"""docstring for Work"""
 	DOW = range(0, 4)
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
 	MODE = Pedestrian
-	PLACE = Work()
 
 	def _init_deps():
 		Work.AFTER = Sleep
 		Work.ORDER = [Work.DoWork, Break, Work.DoWork]
 
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
+	def setPlace(self):
+		self.place = self.mngr.getHuman().getSimulation().getPlaceRegistry().getPlace(PLACES.Work)
 
-	def run(self):
-		self.subNext()
-
-	class DoWork(LocatedBehavior):
+	class DoWork(Behavior):
 		"""docstring for DoWork"""
 		DURATION = (3, 30)
 		MODE = Pedestrian
@@ -169,15 +204,11 @@ class Work(LocatedBehavior): # TODO Build sequencing for sub-behaviors (drive to
 			super().__init__(mngr, next)
 			self.duration = random.randint(self.DURATION[0], self.DURATION[1])
 
-		def getLocation(human):
-			return human.attributes['work']['loc'] # TODO?LOW Implement proper extensible attributes
-
 		def run(self):
 			sleep(self.duration)
-			self.done()
 
 
-class Vacation(LocatedBehavior): # TODO Probably probability based replacement for Work, maybe grouping with probaility based behavior selection
+class Vacation(PlacedBehavior): # TODO Probably probability based replacement for Work, maybe grouping with probaility based behavior selection
 	"""docstring for Vacation"""
 	DOW = range(0, 4)
 	ACTIVATE = (time(8), time(11, 30))
@@ -187,24 +218,21 @@ class Vacation(LocatedBehavior): # TODO Probably probability based replacement f
 	def _init_deps():
 		Vacation.AFTER = Sleep
 
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
+	def setPlace(self):
+		self.place = self.mngr.getHuman().getSimulation().getPlaceRegistry().getPlace(PLACES.Home)
 
-class Sleep(LocatedBehavior):
+
+class Sleep(PlacedBehavior):
 	"""docstring for Sleep"""
 	DOW = range(0, 6)
 	ACTIVATE = (time(22), time(23))
 	MODE = Pedestrian
-	PLACE = Home()
 
 	def _init_deps():
 		Sleep.AFTER = [Work, Weekend, Vacation]
 
-	def getLocation(human):
-		return human.attributes['home']['loc'] # TODO?LOW Implement proper extensible attributes
-
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
+	def setPlace(self):
+		self.place = self.mngr.getHuman().getSimulation().getPlaceRegistry().getPlace(PLACES.Home)
 
 class Weekend(Behavior):
 	"""docstring for Weekend"""
@@ -215,8 +243,6 @@ class Weekend(Behavior):
 	def _init_deps():
 		Weekend.AFTER = Sleep
 
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
 
 def init_deps(cls):
 	cls._init_deps()

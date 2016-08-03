@@ -13,8 +13,6 @@ class Human():
 		self.loc = loc
 		self.setMode(Pedestrian, loc)
 		self.controller = BehaviorManager(self)
-		#TODO?LOW Temporary hard-coded values. Replace by proper mechanism soon
-		self.attributes = {'work': {'loc': Coordinate(54.336875, 10.123047)}, 'home': {'loc': Coordinate(54.355541, 10.131542)}}
 
 	def getSimulation(self):
 		return self.sim

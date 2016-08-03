@@ -2,6 +2,8 @@ from datetime import time, timedelta, datetime
 import random
 import logging
 
+from psydewalk.behavior.behaviors import Behavior
+
 class BehaviorManager():
 	def __init__(self, human, logger='Behavior'):
 		self.logger = logging.getLogger(logger)
@@ -9,6 +11,9 @@ class BehaviorManager():
 		self.behaviors = []
 		self.logger.info('Collecting behaviors')
 		self.collectBehaviors(Behavior)
+		self.behaviorByName = {}
+		self.logger.info('Building name -> behavior relationship')
+		self.buildNameBehaviorRelation(Behavior)
 		self.after = {}
 		self.logger.info('Building dependency graph')
 		self.buildDependencyGraph(Behavior)
@@ -17,7 +22,6 @@ class BehaviorManager():
 		self.buildGroupGraph(Behavior)
 		self.logger.info('Data assembled')
 		self.logger.debug(repr(self))
-		self.queue = []
 
 	def collectBehaviors(self, cls):
 		if (isinstance(cls.AFTER, list) and len(cls.AFTER) > 0) or (not isinstance(cls.AFTER, list) and cls.AFTER):
@@ -25,6 +29,11 @@ class BehaviorManager():
 			self.behaviors.append(cls)
 		for child in cls.__subclasses__():
 			self.collectBehaviors(child)
+
+	def buildNameBehaviorRelation(self, cls):
+		self.behaviorByName[cls.__name__] = cls
+		for child in cls.__subclasses__():
+			self.buildNameBehaviorRelation(child)
 
 	def buildDependencyGraph(self, cls):
 		for cls_ in cls.AFTER if isinstance(cls.AFTER, list) else [cls.AFTER]:
@@ -45,6 +54,9 @@ class BehaviorManager():
 		for child in cls.__subclasses__():
 			self.buildGroupGraph(child)
 
+	def getBehavior(self, name):
+		return self.behaviorByName[name]
+
 	def getRandomBehavior(self):
 		return random.choice(self.behaviors)
 
@@ -62,8 +74,11 @@ class BehaviorManager():
 		return string
 
 	def getNextBehavior(self, behavior): #TODO?MID My eyes are bleeding. Redesign function
-		ancestors = []
 		now = self.human.getSimulation().getDatetime()
+		if not behavior:
+			return (self.getRandomBehavior(), now)
+		behavior = type(behavior)
+		ancestors = []
 		date = now.date()
 		dow = date.weekday()
 		time = now.time()
@@ -110,25 +125,19 @@ class BehaviorManager():
 		return self.human;
 
 	def start(self): # TODO?MID Restore saved state etc
-		self.applyBehavior(self.getRandomBehavior())
+		self.runNext(None)
+
+	def runNext(self, prev):
+		behavior = self.getNextBehavior(prev)[0]
+		self.logger.debug(behavior)
+		behavior = behavior(self)
+		behavior.initPrev(prev)
+		behavior.initSub()
+		self.run(behavior)
 
 	def run(self, behavior):
-		behavior = behavior(self)
-
+		behavior._run()
 
 	def setBehavior(self, behavior):
-		self.logger.info('Setting behavior: ' + behavior.__name__)
+		self.logger.info('Setting behavior: ' + type(behavior).__name__)
 		self.human.changeMode(behavior.MODE)
-
-	def applyBehavior(self, behavior):
-		self.logger.info('Applying behavior: ' + behavior.__name__)
-		next = self.getNextBehavior(behavior)[0]
-		if next.hasPlace():
-			frm = None
-			if behavior.hasPlace():
-				frm = behavior.PLACE
-			transport = self.sim.getTransportRegistry().getSupportedTransport(frm, next.PLACE)
-			self.behavior = behavior(self, TransportBehavior(self, next, transport, next.PLACE, frm))
-		else:
-			self.behavior = behavior(self, next)
-		self.behavior.run()

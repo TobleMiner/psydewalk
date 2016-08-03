@@ -3,8 +3,8 @@ from psydewalk.exception import MissingInfrastructureException
 
 class Place(LocationProvider):
 	"""docstring for Place"""
-	def __init__(self, supported):
-		super().__init__(self)
+	def __init__(self, supported=[]):
+		super(Place, self).__init__()
 		self.transport = {}
 		self.supported = supported
 
@@ -25,7 +25,9 @@ class Place(LocationProvider):
 		return True
 
 	def getSupportedTransports(self):
-		return self.supported
+		if isinstance(self.supported, list):
+			return self.supported
+		return [self.supported]
 
 	def getTransportEndpoint(self, transport):
 		if not transport.PLACE:
@@ -40,11 +42,16 @@ class Place(LocationProvider):
 	def getLocation(self):
 		return self.loc
 
-	class PlaceRegistry():
-		"""docstring for PlaceRegistry"""
-		def __init__(self):
-			super(PlaceRegistry, self).__init__()
-			self.places = {}
+class PlaceRegistry():
+	"""docstring for PlaceRegistry"""
+	def __init__(self):
+		super(PlaceRegistry, self).__init__()
+		self.places = {}
 
-		def addPlace(self, place):
-			self.places[type(place)] = place
+	def addPlace(self, place):
+		print(place)
+		self.places[type(place)] = place
+
+	def getPlace(self, place):
+		print(self.places)
+		return self.places[place]
