@@ -1,9 +1,9 @@
-from psydewalk.transport import Transport
-from psydewalk.transport.transports import *
+from psydewalk.data import LocationProvider
 
-class Place():
+class Place(LocationProvider):
 	"""docstring for Place"""
 	def __init__(self, supported):
+		super().__init__(self)
 		self.transport = {}
 		self.supported = supported
 
@@ -26,7 +26,11 @@ class Place():
 	def getSupportedTransports(self):
 		return self.supported
 
-class Home(Place): # TODO?LOW Unserialize palces from human readable config file
-	"""docstring for Home"""
-	def __init__(self):
-		super(Home, self).__init__([Bike, Bus, Foot, Car])
+	def getTransportEndpoint(self, type):
+		return self.getLocation()
+
+	def getSubplace(self, type): # Name is a bit deceiving, can return multiple places as an array
+		return self.subplaces[type]
+
+	def getLocation(self):
+		return self.loc

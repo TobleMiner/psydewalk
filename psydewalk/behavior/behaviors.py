@@ -1,5 +1,6 @@
 from psydewalk.pedestrian import Pedestrian
 from psydewalk.driver import Driver
+from psydewalk.place.places import *
 
 from time import sleep
 from datetime import time, timedelta, datetime
@@ -91,16 +92,17 @@ class Break(Behavior):
 		sleep(self.duration)
 		self.done()
 
-class Work(Behavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
+class Work(LocatedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
 	"""docstring for Work"""
 	DOW = range(0, 4)
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
 	MODE = Pedestrian
+	PLACE = Work
 
 	def _init_deps():
 		Work.AFTER = Sleep
-		Work.ORDER = [DriveTo, Work.DoWork, Break, Work.DoWork, DriveTo]
+		Work.ORDER = [Work.DoWork, Break, Work.DoWork]
 
 	def __init__(self, mngr, next):
 		super().__init__(mngr, next)
@@ -125,7 +127,7 @@ class Work(Behavior): # TODO Build sequencing for sub-behaviors (drive to work, 
 			self.done()
 
 
-class Vacation(Behavior): # TODO Probably probability based replacement for Work, maybe grouping with probaility based behavior selection
+class Vacation(LocatedBehavior): # TODO Probably probability based replacement for Work, maybe grouping with probaility based behavior selection
 	"""docstring for Vacation"""
 	DOW = range(0, 4)
 	ACTIVATE = (time(8), time(11, 30))
@@ -143,6 +145,7 @@ class Sleep(LocatedBehavior):
 	DOW = range(0, 6)
 	ACTIVATE = (time(22), time(23))
 	MODE = Pedestrian
+	PLACE = Home
 
 	def _init_deps():
 		Sleep.AFTER = [Work, Weekend, Vacation]
