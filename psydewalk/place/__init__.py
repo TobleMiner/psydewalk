@@ -27,10 +27,21 @@ class Place(LocationProvider):
 		return self.supported
 
 	def getTransportEndpoint(self, type):
-		return self.getLocation()
+		if not type.PLACE:
+			return self.getLocation()
+		return self.getSubplace(type.PLACE)
 
 	def getSubplace(self, type): # Name is a bit deceiving, can return multiple places as an array
 		return self.subplaces[type]
 
 	def getLocation(self):
 		return self.loc
+
+	class PlaceRegistry():
+		"""docstring for PlaceRegistry"""
+		def __init__(self):
+			super(PlaceRegistry, self).__init__()
+			self.places = {}
+
+		def addPlace(self, place):
+			self.places[type(place)] = place

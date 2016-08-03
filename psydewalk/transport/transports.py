@@ -1,5 +1,5 @@
 from psydewalk.transport import Transport
-from psydewalk.place.places import *
+from psydewalk.behavior.behaviors import *
 
 class Car(Transport): # TODO?LOW Unserialize transports from human readable config file
 	"""docstring for Car"""

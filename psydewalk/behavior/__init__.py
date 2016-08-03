@@ -1,5 +1,3 @@
-from psydewalk.behavior.behaviors import *
-
 from datetime import time, timedelta, datetime
 import random
 import logging
@@ -19,6 +17,7 @@ class BehaviorManager():
 		self.buildGroupGraph(Behavior)
 		self.logger.info('Data assembled')
 		self.logger.debug(repr(self))
+		self.queue = []
 
 	def collectBehaviors(self, cls):
 		if (isinstance(cls.AFTER, list) and len(cls.AFTER) > 0) or (not isinstance(cls.AFTER, list) and cls.AFTER):
@@ -113,6 +112,10 @@ class BehaviorManager():
 	def start(self): # TODO?MID Restore saved state etc
 		self.applyBehavior(self.getRandomBehavior())
 
+	def run(self, behavior):
+		behavior = behavior(self)
+
+
 	def setBehavior(self, behavior):
 		self.logger.info('Setting behavior: ' + behavior.__name__)
 		self.human.changeMode(behavior.MODE)
@@ -120,5 +123,12 @@ class BehaviorManager():
 	def applyBehavior(self, behavior):
 		self.logger.info('Applying behavior: ' + behavior.__name__)
 		next = self.getNextBehavior(behavior)[0]
-		self.behavior = behavior(self, next)
+		if next.hasPlace():
+			frm = None
+			if behavior.hasPlace():
+				frm = behavior.PLACE
+			transport = self.sim.getTransportRegistry().getSupportedTransport(frm, next.PLACE)
+			self.behavior = behavior(self, TransportBehavior(self, next, transport, next.PLACE, frm))
+		else:
+			self.behavior = behavior(self, next)
 		self.behavior.run()

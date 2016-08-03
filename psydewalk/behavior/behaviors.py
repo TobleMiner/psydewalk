@@ -1,6 +1,7 @@
 from psydewalk.pedestrian import Pedestrian
 from psydewalk.driver import Driver
 from psydewalk.place.places import *
+from psydewalk.data import LocationProvider
 
 from time import sleep
 from datetime import time, timedelta, datetime
@@ -22,33 +23,25 @@ class Behavior():
 	def _init_deps():
 		pass
 
-	def __init__(self, mngr, next):
+	def __init__(self, mngr, parent=None):
 		self.mngr = mngr
-		self.next = next
-		self.subIndex = 0
-		self.parent = None
-
-	def setParent(self, parent):
 		self.parent = parent
+		self.queue = []
+		for sub in self.ORDER:
+			self.queue.append(sub(mngr, self))
+		self.init()
+
+	def init(self):
+		"""Performs pre instanziation initialisation (dynamic sub behaviors and such)"""
+		pass
 
 	def subNext(self):
-		if self.subIndex >= len(self.ORDER):
+		if len(self.queue) == 0:
 			if self.parent:
 				self.parent.subNext()
 			else:
-				self.mngr.setBehavior(self.next)
-				self.mngr.applyBehavior(self.next)
-			return
-		sub = self.ORDER[self.subIndex]
-		self.mngr.setBehavior(sub)
-		self.subIndex += 1
-		next = self.next
-		if self.subIndex < len(self.ORDER):
-			next = self.ORDER[self.subIndex]
-		elif self.parent:
-			next = self.parent.next
-		sub = sub(self.mngr, next)
-		sub.setParent(self)
+				self.mngr.runNext(self)
+		sub = self.queue.pop(0)
 		sub.run()
 
 	def run(self):
@@ -57,28 +50,62 @@ class Behavior():
 	def done(self):
 		self.subNext()
 
-class LocatedBehavior(Behavior):
+class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
+	PLACE = None
+
+	@classmethod
+	def hasPlace(cls):
+		return cls.PLACE != None
+
 	def __init__(self, mngr, next):
 		super().__init__(mngr, next)
 
-	def getLocation(self):
-		raise Exception('Not implemented')
+class TransportBehavior(Behavior):
+	"""docstring for TransportBehavior"""
+	MODE = Pedestrian
+
+	def __init__(self, mngr, next, transport, to, frm=None):
+		super(TransportBehavior, self).__init__(mngr, next)
+		self.transport = transport
+		if not frm:
+			frm = mngr.getHuman().getLocation()
+		transportfrm = frm
+		if isinstance(frm, Place):
+			transportfrm = self.getEndpointfromPlace(frm, transport).getLocation()
+		transportto = to
+		locto = to
+		if isinstance(to, Place):
+			transportto = self.getEndpointfromPlace(to, transport).getLocation
+			locto = to.getLocation()
+		self.next = WalkTo(mngr, transport.BEHAVIOR(mngr, WalkTo(mngr, self.next, locto), transportto), transportfrm)
+		transport.BEHAVIOR(mngr, transportto)
+
+	def getEndpointfromPlace(self, place, transport):
+		endpoint = place.getTransportEndpoint(transport)
+		if isinstance(endpoint, list):
+			return random.choice(endpoint)
+		return endpoint
+
 
 class MoveTo(Behavior):
-	"""docstring for moveTo"""
-	def __init__(self, mngr, next): # Determine where to drive from location of next behavior
+	"""docstring for MoveTo"""
+
+	def __init__(self, mngr, next, loc): # Determine where to drive frm location of next behavior
 		super().__init__(mngr, next)
+		self.loc = loc
 
 	def run(self):
-		self.mngr.getHuman().navigateTo(self.next.getLocation(self.mngr.getHuman()))
+		self.mngr.getHuman().navigateTo(self.loc)
 		self.done()
+
+class WalkTo(MoveTo):
+	"""docstring for moveTo"""
+	MODE = Pedestrian
 
 class DriveTo(MoveTo):
 	"""docstring for DriveTo"""
 	MODE = Driver
-	def __init__(self, mngr, next): # Determine where to drive from location of next behavior
-		super().__init__(mngr, next)
 
 class Break(Behavior):
 	"""docstring for Break""" # Generic break
@@ -98,7 +125,7 @@ class Work(LocatedBehavior): # TODO Build sequencing for sub-behaviors (drive to
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
 	MODE = Pedestrian
-	PLACE = Work
+	PLACE = Work()
 
 	def _init_deps():
 		Work.AFTER = Sleep
@@ -145,7 +172,7 @@ class Sleep(LocatedBehavior):
 	DOW = range(0, 6)
 	ACTIVATE = (time(22), time(23))
 	MODE = Pedestrian
-	PLACE = Home
+	PLACE = Home()
 
 	def _init_deps():
 		Sleep.AFTER = [Work, Weekend, Vacation]

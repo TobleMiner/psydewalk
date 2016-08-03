@@ -1,5 +1,5 @@
-class NotImplementedException(Exception):
-	"""docstring for NotImplementedException"""
+class MethodNotImplementedException(Exception):
+	"""docstring for MethodNotImplementedException"""
 	def __init__(self):
-		super(NotImplementedException, self).__init__('Method not implemented')
+		super(MethodNotImplementedException, self).__init__('Method not implemented')
 		self.arg = arg
