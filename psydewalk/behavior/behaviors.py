@@ -27,9 +27,10 @@ class Behavior():
 	def _init_deps():
 		pass
 
-	def __init__(self, mngr, parent=None):
+	def __init__(self, mngr, parent=None, timelimit=None):
 		self.mngr = mngr
 		self.parent = parent
+		self.timelimit = timelimit
 		self.queue = []
 		self.init()
 
@@ -39,10 +40,17 @@ class Behavior():
 
 	def initPrev(self, prev):
 		"""Initializes this instance based on the previous behavior"""
+		pass
 
 	def initSub(self):
 		for sub in self.ORDER:
 			self.queue.append(sub(self.mngr, self))
+
+	def preSub(self):
+		pass
+
+	def postSub(self):
+		pass
 
 	def subNext(self):
 		if len(self.queue) == 0:
@@ -50,22 +58,21 @@ class Behavior():
 			if self.parent:
 				self.parent.subNext()
 			else:
-				self.mngr.runNext(self)
+				return #self.mngr.runNext(self)
 		sub = self.queue.pop(0)
-		sub._run()
-
-	def _run(self):
-		self.mngr.setBehavior(self)
-		self.subNext()
+		sub.run()
 
 	def run(self):
-		pass
+		self.mngr.setBehavior(self)
+		self.preSub()
+		self.subNext()
+		self.postSub()
 
 class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
 
-	def __init__(self, mngr, parent=None):
-		super(LocatedBehavior, self).__init__(mngr, parent)
+	def __init__(self, mngr, parent=None, timelimit=None):
+		super(LocatedBehavior, self).__init__(mngr, parent, timelimit)
 		self.setLocation()
 
 	def setLocation(self):
@@ -83,8 +90,8 @@ class LocatedBehavior(Behavior, LocationProvider):
 class PlacedBehavior(Behavior, PlaceProvider):
 	"""docstring for PlacedBehavior"""
 
-	def __init__(self, mngr, parent=None):
-		super(PlacedBehavior, self).__init__(mngr, parent)
+	def __init__(self, mngr, parent=None, timelimit=None):
+		super(PlacedBehavior, self).__init__(mngr, parent, timelimit)
 		self.setPlace()
 
 	def setPlace(self):
@@ -101,8 +108,8 @@ class PlacedBehavior(Behavior, PlaceProvider):
 
 class TransportBehavior(Behavior):
 	"""docstring for TransportBehavior"""
-	def __init__(self, mngr, parent=None, logger='transport'):
-		super(TransportBehavior, self).__init__(mngr, parent)
+	def __init__(self, mngr, parent=None, timelimit=None, logger='transport'):
+		super(TransportBehavior, self).__init__(mngr, parent, timelimit)
 		self.logger = logging.getLogger(logger)
 
 	def initTransport(self, frm, to):
@@ -129,6 +136,7 @@ class TransportBehavior(Behavior):
 		if len(transports) == 0:
 			raise NoTransportException()
 		transport = random.choice(transports)
+		self.logger.debug('Choosen transport: {0}'.format(transport))
 		behavior = self.mngr.getBehavior(transport.BEHAVIOR)
 		if transport.PLACE:
 			start = locfrm
@@ -155,11 +163,11 @@ class TransportBehavior(Behavior):
 class MoveTo(Behavior):
 	"""docstring for MoveTo"""
 
-	def __init__(self, mngr, parent, to): # Determine where to drive from location of next behavior
+	def __init__(self, mngr, parent, to):
 		super().__init__(mngr, parent)
 		self.dest = to
 
-	def run(self):
+	def postSub(self):
 		self.mngr.getHuman().navigateTo(self.dest)
 
 class WalkTo(MoveTo):
@@ -178,7 +186,7 @@ class Break(Behavior):
 	def init(self):
 		self.duration = random.randint(self.DURATION[0], self.DURATION[1])
 
-	def run(self):
+	def postSub(self):
 		sleep(self.duration)
 
 class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
@@ -200,11 +208,10 @@ class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to 
 		DURATION = (3, 30)
 		MODE = Pedestrian
 
-		def __init__(self, mngr, next):
-			super().__init__(mngr, next)
+		def init(self):
 			self.duration = random.randint(self.DURATION[0], self.DURATION[1])
 
-		def run(self):
+		def postSub(self):
 			sleep(self.duration)
 
 

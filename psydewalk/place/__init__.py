@@ -49,9 +49,7 @@ class PlaceRegistry():
 		self.places = {}
 
 	def addPlace(self, place):
-		print(place)
 		self.places[type(place)] = place
 
 	def getPlace(self, place):
-		print(self.places)
 		return self.places[place]

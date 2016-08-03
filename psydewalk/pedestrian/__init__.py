@@ -16,7 +16,11 @@ class Pedestrian(SmoothMovingEntity, DataProvider, Jitter):
 		DataProvider.__init__(self)
 		Jitter.__init__(self)
 		SmoothMovingEntity.__init__(self, loc, speed, logger)
-		self.loop = asyncio.get_event_loop()
+		try:
+			self.loop = asyncio.get_event_loop()
+		except RuntimeError:
+			self.loop = asyncio.new_event_loop()
+			asyncio.set_event_loop(self.loop)
 		self.waypoints = Queue()
 		self.osm = LoadOsm("foot")
 

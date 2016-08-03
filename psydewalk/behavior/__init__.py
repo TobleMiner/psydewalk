@@ -3,6 +3,7 @@ import random
 import logging
 
 from psydewalk.behavior.behaviors import Behavior
+from psydewalk.async import Alarm
 
 class BehaviorManager():
 	def __init__(self, human, logger='Behavior'):
@@ -22,6 +23,8 @@ class BehaviorManager():
 		self.buildGroupGraph(Behavior)
 		self.logger.info('Data assembled')
 		self.logger.debug(repr(self))
+		self.next = None
+		self.alarm = None
 
 	def collectBehaviors(self, cls):
 		if (isinstance(cls.AFTER, list) and len(cls.AFTER) > 0) or (not isinstance(cls.AFTER, list) and cls.AFTER):
@@ -128,15 +131,23 @@ class BehaviorManager():
 		self.runNext(None)
 
 	def runNext(self, prev):
-		behavior = self.getNextBehavior(prev)[0]
-		self.logger.debug(behavior)
-		behavior = behavior(self)
+		behavior = self.next
+		if not behavior:
+			behavior = self.getNextBehavior(prev)[0]
+		self.logger.debug('Starting behavior: {0}'.format(behavior))
+		self.next, time = self.getNextBehavior(prev)
+		behavior = behavior(self, timelimit=time)
+		self.alarm = Alarm(self.human.getSimulation())
+		self.logger.debug('Time limit for {0} set: {1}'.format(behavior, time))
+		self.logger.debug('Next: {0}'.format(self.next))
+		self.alarm.setup(time, self.runNext, [behavior])
+		self.alarm.start()
 		behavior.initPrev(prev)
 		behavior.initSub()
 		self.run(behavior)
 
 	def run(self, behavior):
-		behavior._run()
+		behavior.run()
 
 	def setBehavior(self, behavior):
 		self.logger.info('Setting behavior: ' + type(behavior).__name__)
