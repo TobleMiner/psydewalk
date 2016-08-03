@@ -11,3 +11,11 @@ class LocationProvider():
 
 	def getLocation(self):
 		raise MethodNotImplementedException()
+
+class PlaceProvider():
+	"""docstring for PlaceProvider"""
+	def __init__(self):
+		super(PlaceProvider, self).__init__()
+
+	def getPlace(self):
+		raise MethodNotImplementedException()

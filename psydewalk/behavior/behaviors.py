@@ -1,7 +1,8 @@
 from psydewalk.pedestrian import Pedestrian
 from psydewalk.driver import Driver
 from psydewalk.place.places import *
-from psydewalk.data import LocationProvider
+from psydewalk.data import LocationProvider, PlaceProvider
+from psydewalk.util.list import intersect
 
 from time import sleep
 from datetime import time, timedelta, datetime
@@ -32,7 +33,11 @@ class Behavior():
 		self.init()
 
 	def init(self):
-		"""Performs pre instanziation initialisation (dynamic sub behaviors and such)"""
+		"""Performs pre instanziation initialisation (dynamic sub-behaviors and such)"""
+		pass
+
+	def initPrev(self, prev):
+		"""Initializes this instance based on the previous behavior"""
 		pass
 
 	def subNext(self):
@@ -45,41 +50,59 @@ class Behavior():
 		sub.run()
 
 	def run(self):
-		self.subNext()
+		self.done()
 
 	def done(self):
 		self.subNext()
 
 class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
-	PLACE = None
 
-	@classmethod
-	def hasPlace(cls):
-		return cls.PLACE != None
+	def __init__(self, mngr, parent=None):
+		super(LocatedBehavior, self).__init__(mngr, parent)
+		self.setLoc()
 
-	def __init__(self, mngr, next):
-		super().__init__(mngr, next)
+	def setLoc(self):
+		raise MethodNotImplementedException()
+
+	def initPrev(self, prev):
+		sub = TransportBehavior(self.mngr, self)
+		sub.initTransport(prev, self)
+
 
 class TransportBehavior(Behavior):
 	"""docstring for TransportBehavior"""
-	MODE = Pedestrian
+	def __init__(self, mngr, parent=None):
+		super(TransportBehavior, self).__init__(mngr, parent)
 
-	def __init__(self, mngr, next, transport, to, frm=None):
-		super(TransportBehavior, self).__init__(mngr, next)
-		self.transport = transport
-		if not frm:
-			frm = mngr.getHuman().getLocation()
-		transportfrm = frm
-		if isinstance(frm, Place):
-			transportfrm = self.getEndpointfromPlace(frm, transport).getLocation()
-		transportto = to
+	def initTransport(self, frm, to):
+		transports = self.mngr.getSimulation().getTransportRegistry().getTransports()
+		locfrm = frm
+		if isinstance(frm, PlaceProvider):
+			place = frm.getPlace()
+			transports = place.getSupportedTransports()
+			locfrm = place.getLocation()
+		elif isinstance(frm, LocationProvider):
+			locfrm = frm.getLocation()
+		else:
+			pass
 		locto = to
-		if isinstance(to, Place):
-			transportto = self.getEndpointfromPlace(to, transport).getLocation
+		if isinstance(to, PlaceProvider):
+			place = to.getPlace()
+			transports = intersect(transports, place.getSupportedTransports())
+			locto = palce.getLocation()
+		elif isinstance(to, LocationProvider):
 			locto = to.getLocation()
-		self.next = WalkTo(mngr, transport.BEHAVIOR(mngr, WalkTo(mngr, self.next, locto), transportto), transportfrm)
-		transport.BEHAVIOR(mngr, transportto)
+		else:
+			pass
+		if len(transports) == 0:
+			raise NoTransportException()
+		transport = random.choice(transports)
+		if transport.PLACE:
+			if isinstance(frm, PlaceProvider):
+				self.getEndpointfromPlace(frm, transport)
+		else:
+			self.queue.append(transport.BEHAVIOR(self.mngr, self, locfrm, locto))
 
 	def getEndpointfromPlace(self, place, transport):
 		endpoint = place.getTransportEndpoint(transport)
@@ -91,7 +114,7 @@ class TransportBehavior(Behavior):
 class MoveTo(Behavior):
 	"""docstring for MoveTo"""
 
-	def __init__(self, mngr, next, loc): # Determine where to drive frm location of next behavior
+	def __init__(self, mngr, next, loc): # Determine where to drive from location of next behavior
 		super().__init__(mngr, next)
 		self.loc = loc
 

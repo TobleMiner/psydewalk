@@ -38,7 +38,9 @@ class TransportRegistry():
 			transportsfrm = frm.getSupportedTransports()
 		return [list(filter(lambda transport: transport in transportsfrm, transports)) for transports in transportsto]
 
-	def getTransports(self, type):
+	def getTransports(self, type=None):
+		if not type:
+			return self.registry
 		transports = []
 		for transport in self.registry:
 			if isinstance(transport, type):

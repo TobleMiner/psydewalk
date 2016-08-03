@@ -1,4 +1,5 @@
 from psydewalk.data import LocationProvider
+from psydewalk.exception import MissingInfrastructureException
 
 class Place(LocationProvider):
 	"""docstring for Place"""
@@ -26,10 +27,12 @@ class Place(LocationProvider):
 	def getSupportedTransports(self):
 		return self.supported
 
-	def getTransportEndpoint(self, type):
-		if not type.PLACE:
+	def getTransportEndpoint(self, transport):
+		if not transport.PLACE:
 			return self.getLocation()
-		return self.getSubplace(type.PLACE)
+		if not transport.PLACE in self.subplaces:
+			raise MissingInfrastructureException(self, transport)
+		return self.getSubplace(transport.PLACE)
 
 	def getSubplace(self, type): # Name is a bit deceiving, can return multiple places as an array
 		return self.subplaces[type]
