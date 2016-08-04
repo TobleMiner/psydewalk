@@ -16,6 +16,7 @@ class Behavior():
 	GROUP = None
 	MODE = Pedestrian
 	ORDER = []
+	HANDOFF = False
 
 	def getTimeframe(cls, dow):
 		if isinstance(cls.ACTIVATE, list):
@@ -26,16 +27,19 @@ class Behavior():
 	def _init_deps():
 		pass
 
-	def __init__(self, mngr, parent=None, timelimit=None):
+	def __init__(self, mngr, parent=None, deadline=None):
 		self.mngr = mngr
 		self.parent = parent
-		self.timelimit = timelimit
+		self.deadline = deadline
 		self.queue = []
 		self.terminated = False
 		self.init()
 
+	def setDeadline(self, deadline):
+		self.deadline = deadline
+
 	def getTimeLeft(self):
-		return self.timelimit - self.mngr.getHuman().getSimulation().getDatetime()
+		return self.deadline - self.mngr.getHuman().getSimulation().getDatetime()
 
 	def terminate(self):
 		self.terminated = True
@@ -60,10 +64,9 @@ class Behavior():
 
 	def subNext(self):
 		if len(self.queue) == 0:
-			if self.parent:
-				self.parent.subNext()
-			else:
-				return #self.mngr.runNext(self)
+			if not self.parent:
+				return
+			self.parent.subNext()
 		else:
 			sub = self.queue.pop(0)
 			sub.run()
@@ -78,8 +81,8 @@ class Behavior():
 class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
 
-	def __init__(self, mngr, parent=None, timelimit=None):
-		super(LocatedBehavior, self).__init__(mngr, parent, timelimit)
+	def __init__(self, mngr, parent=None, deadline=None):
+		super(LocatedBehavior, self).__init__(mngr, parent, deadline)
 		self.setLocation()
 
 	def setLocation(self):
@@ -97,8 +100,8 @@ class LocatedBehavior(Behavior, LocationProvider):
 class PlacedBehavior(Behavior, PlaceProvider):
 	"""docstring for PlacedBehavior"""
 
-	def __init__(self, mngr, parent=None, timelimit=None):
-		super(PlacedBehavior, self).__init__(mngr, parent, timelimit)
+	def __init__(self, mngr, parent=None, deadline=None):
+		super(PlacedBehavior, self).__init__(mngr, parent, deadline)
 		self.setPlace()
 
 	def setPlace(self):
@@ -115,8 +118,8 @@ class PlacedBehavior(Behavior, PlaceProvider):
 
 class TransportBehavior(Behavior):
 	"""docstring for TransportBehavior"""
-	def __init__(self, mngr, parent=None, timelimit=None, logger='transport'):
-		super(TransportBehavior, self).__init__(mngr, parent, timelimit)
+	def __init__(self, mngr, parent=None, deadline=None, logger='transport'):
+		super(TransportBehavior, self).__init__(mngr, parent, deadline)
 		self.logger = logging.getLogger(logger)
 
 	def initTransport(self, frm, to):
@@ -174,7 +177,7 @@ class MoveTo(Behavior):
 		super().__init__(mngr, parent)
 		self.dest = to
 
-	def postSub(self):
+	def preSub(self):
 		self.mngr.getHuman().navigateTo(self.dest)
 
 class WalkTo(MoveTo):
@@ -198,14 +201,14 @@ class Break(Behavior):
 
 class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
 	"""docstring for Work"""
-	DOW = range(0, 4)
+	DOW = range(0, 5)
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
 	MODE = Pedestrian
 
 	def _init_deps():
 		Work.AFTER = Sleep
-		Work.ORDER = [Work.DoWork, Break, Work.DoWork]
+		Work.ORDER = [Work.DoWork, Work.LunchBreak, Work.DoWork]
 
 	def setPlace(self):
 		self.place = self.mngr.getHuman().getSimulation().getPlaceRegistry().getPlace(PLACES.Work)
@@ -221,6 +224,10 @@ class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to 
 		def postSub(self):
 			sleep(self.duration)
 
+	class LunchBreak(Break):
+		"""docstring for LunchBreak"""
+		HANDOFF = True
+
 
 class Vacation(PlacedBehavior): # TODO Probably probability based replacement for Work, maybe grouping with probaility based behavior selection
 	"""docstring for Vacation"""
@@ -228,6 +235,7 @@ class Vacation(PlacedBehavior): # TODO Probably probability based replacement fo
 	ACTIVATE = (time(8), time(11, 30))
 	GROUP = ('work', 0.05)
 	MODE = Pedestrian
+	HANDOFF = True
 
 	def _init_deps():
 		Vacation.AFTER = Sleep
@@ -238,7 +246,7 @@ class Vacation(PlacedBehavior): # TODO Probably probability based replacement fo
 
 class Sleep(PlacedBehavior):
 	"""docstring for Sleep"""
-	DOW = range(0, 6)
+	DOW = range(0, 7)
 	ACTIVATE = (time(22), time(23))
 	MODE = Pedestrian
 
@@ -250,7 +258,7 @@ class Sleep(PlacedBehavior):
 
 class Weekend(Behavior):
 	"""docstring for Weekend"""
-	DOW = range(5, 6)
+	DOW = range(5, 7)
 	ACTIVATE = (time(9), time(11, 00))
 	MODE = Pedestrian
 

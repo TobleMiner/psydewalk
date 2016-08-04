@@ -61,6 +61,8 @@ class BehaviorManager():
 		return self.behaviorByName[name]
 
 	def getRandomBehavior(self):
+		from psydewalk.behavior.behaviors import Work
+		return Work
 		return random.choice(self.behaviors)
 
 	def __repr__(self):
@@ -80,7 +82,6 @@ class BehaviorManager():
 		now = self.human.getSimulation().getDatetime()
 		if not behavior:
 			return (self.getRandomBehavior(), now)
-		behavior = type(behavior)
 		ancestors = []
 		date = now.date()
 		dow = date.weekday()
@@ -119,9 +120,7 @@ class BehaviorManager():
 					eventdate += timedelta(days=1)
 				begin = datetime.combine(eventdate.date(), begin)
 				end = datetime.combine(eventdate.date(), end)
-				self.logger.debug('NEXT: {0}'.format(behavior))
 				return behavior, begin + (end - begin) * random.random()
-		self.logger.debug('NEXT: {0}'.format(ancestor[0]))
 		return ancestor[0], ancestor[1]
 
 	def getHuman(self):
@@ -135,13 +134,13 @@ class BehaviorManager():
 		if prev:
 			prev.terminate()
 		if not behavior:
-			behavior = self.getNextBehavior(prev)[0]
+			behavior = self.getNextBehavior(type(prev) if prev else None)[0]
 		self.logger.debug('Starting behavior: {0}'.format(behavior))
-		self.next, time = self.getNextBehavior(prev)
-		behavior = behavior(self, timelimit=time)
+		self.next, time = self.getNextBehavior(behavior)
+		behavior = behavior(self, deadline=time)
 		self.alarm = Alarm(self.human.getSimulation())
-		self.logger.debug('Time limit for {0} set: {1}'.format(behavior, time))
-		self.logger.debug('Next: {0}'.format(self.next))
+		self.logger.debug('Deadline for {0} set: {1}'.format(behavior, time))
+		self.logger.debug('Next behavior: {0}@{1}'.format(self.next, time))
 		self.alarm.setup(time, self.runNext, [behavior])
 		self.alarm.start()
 		behavior.initPrev(prev)

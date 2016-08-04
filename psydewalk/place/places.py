@@ -25,6 +25,18 @@ class Work(Place): # TODO?LOW Unserialize palces from human readable config file
 			BusStop: BusStop(self.loc)
 		}
 
+class Park(Place):
+	"""docstring for Park"""
+	def __init__(self, arg):
+		from psydewalk.transport.transports import Bike, Bus, Foot, Car
+		super(Park, self).__init__([Bike, Foot, Car])
+		self.loc = Coordinate(54.345244, 10.124970)
+		self.subplaces = {
+			ParkingLot: [ParkingLot(Coordinate(54.343934, 10.127762)), ParkingLot(Coordinate(54.344841, 10.127842))],
+			BikeRack: BikeRack(Coordinate(54.345535, 10.128303))
+		}
+
+
 class ParkingLot(Place):
 	"""docstring for ParkingLot"""
 	def __init__(self, loc):

@@ -28,6 +28,7 @@ class Human():
 		return -1
 
 	def navigateTo(self, coord):
+		self.logger.info('Navigating from {1} to {0}'.format(coord, self.getLocation()))
 		self.mode.navigateTo(coord)
 		self.mode.run()
 
