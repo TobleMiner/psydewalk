@@ -9,6 +9,7 @@ from pyroutelib2.loadOsm import LoadOsm
 import asyncio
 from asyncio import Queue
 from threading import Thread
+from threading import Lock
 
 
 class Driver(SmoothMovingEntity, DataProvider, Jitter):
@@ -18,6 +19,8 @@ class Driver(SmoothMovingEntity, DataProvider, Jitter):
 		SmoothMovingEntity.__init__(self, loc, speed, logger)
 		self.loop = asyncio.get_event_loop()
 		self.waypoints = Queue()
+		self.doTerminate = False
+		self.runLock = Lock()
 		self.osm = LoadOsm("car")
 
 	def navigateTo(self, coord): # TODO?MID Consider max speed of roads and traffic lights
@@ -37,6 +40,7 @@ class Driver(SmoothMovingEntity, DataProvider, Jitter):
 		self.loop.run_until_complete(self.waypoints.put(coord))
 
 	def run(self, interval=50):
+		self.runLock.acquire()
 		self.logger.info('Starting @{0}'.format(self.loc))
 		while True:
 			if self.waypoints.empty():
@@ -46,3 +50,9 @@ class Driver(SmoothMovingEntity, DataProvider, Jitter):
 			self.logger.info('Moving to {0}'.format(waypoint))
 			self.moveTo(waypoint, interval)
 			self.logger.info('Reached {0}'.format(waypoint))
+		self.runLock.release()
+
+	def terminate(self, block=True):
+		self.doTerminate = True
+		if block:
+			self.runLock.acquire()

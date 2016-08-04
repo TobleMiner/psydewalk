@@ -22,6 +22,8 @@ class Pedestrian(SmoothMovingEntity, DataProvider, Jitter):
 			self.loop = asyncio.new_event_loop()
 			asyncio.set_event_loop(self.loop)
 		self.waypoints = Queue()
+		self.doTerminate = False
+		self.runLock = Lock()
 		self.osm = LoadOsm("foot")
 
 	def navigateTo(self, coord):
@@ -41,6 +43,7 @@ class Pedestrian(SmoothMovingEntity, DataProvider, Jitter):
 		self.loop.run_until_complete(self.waypoints.put(coord))
 
 	def run(self, interval=50):
+		self.runLock.acquire()
 		self.logger.info('Starting @{0}'.format(self.loc))
 		while True:
 			if self.waypoints.empty():
@@ -50,3 +53,9 @@ class Pedestrian(SmoothMovingEntity, DataProvider, Jitter):
 			self.logger.info('Moving to {0}'.format(waypoint))
 			self.moveTo(waypoint, interval)
 			self.logger.info('Reached {0}'.format(waypoint))
+		self.runLock.release()
+
+	def terminate(self, block=True):
+		self.doTerminate = True
+		if block:
+			self.runLock.acquire()

@@ -40,5 +40,8 @@ class Human():
 		loc = self.mode.getLocation()
 		self.setMode(mode, loc)
 
+	def getMode(self):
+		return self.mode
+
 	def start(self):
 		self.controller.start()

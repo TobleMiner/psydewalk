@@ -1,4 +1,5 @@
 from datetime import time, timedelta, datetime
+from threading import Lock
 import random
 import logging
 
@@ -23,6 +24,7 @@ class BehaviorManager():
 		self.buildGroupGraph(Behavior)
 		self.logger.info('Data assembled')
 		self.logger.debug(repr(self))
+		self.behaviorLock = Lock()
 		self.next = None
 		self.alarm = None
 
@@ -148,7 +150,9 @@ class BehaviorManager():
 		self.run(behavior)
 
 	def run(self, behavior):
+		self.lock.aquire()
 		behavior.run()
+		self.lock.release()
 
 	def setBehavior(self, behavior):
 		self.logger.info('Setting behavior: ' + type(behavior).__name__)

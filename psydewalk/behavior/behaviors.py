@@ -7,6 +7,7 @@ import psydewalk.place.places as PLACES
 
 from time import sleep
 from datetime import time, timedelta, datetime
+from collections import deque
 import random
 import logging
 
@@ -31,7 +32,7 @@ class Behavior():
 		self.mngr = mngr
 		self.parent = parent
 		self.deadline = deadline
-		self.queue = []
+		self.queue = deque()
 		self.terminated = False
 		self.init()
 
@@ -42,7 +43,17 @@ class Behavior():
 		return self.deadline - self.mngr.getHuman().getSimulation().getDatetime()
 
 	def terminate(self):
-		self.terminated = True
+		if self.terminated:
+			return
+		self.queue.clear()
+		mode = self.mngr.getHuman().getMode()
+		if mode:
+			mode.terminate()
+		self.cleanup()
+
+	def cleanup(self):
+		"""Perform cleanup"""
+		pass
 
 	def init(self):
 		"""Performs pre instantiation initialisation (dynamic sub-behaviors and such)"""
@@ -68,7 +79,7 @@ class Behavior():
 				return
 			self.parent.subNext()
 		else:
-			sub = self.queue.pop(0)
+			sub = self.queue.popleft()
 			sub.run()
 
 	def run(self):
@@ -77,6 +88,7 @@ class Behavior():
 		self.subNext()
 		self.mngr.setBehavior(self)
 		self.postSub()
+		self.terminated = True
 
 class LocatedBehavior(Behavior, LocationProvider):
 	"""docstring for LocatedBehavior"""
@@ -84,6 +96,11 @@ class LocatedBehavior(Behavior, LocationProvider):
 	def __init__(self, mngr, parent=None, deadline=None):
 		super(LocatedBehavior, self).__init__(mngr, parent, deadline)
 		self.setLocation()
+
+	def cleanup(self):
+		sub = TransportBehavior(self.mngr) # Don't set parent. Run detached
+		sub.initTransport(None, self)
+		sub.run()
 
 	def setLocation(self):
 		print(self)
@@ -103,6 +120,11 @@ class PlacedBehavior(Behavior, PlaceProvider):
 	def __init__(self, mngr, parent=None, deadline=None):
 		super(PlacedBehavior, self).__init__(mngr, parent, deadline)
 		self.setPlace()
+
+	def cleanup(self):
+		sub = TransportBehavior(self.mngr) # Don't set parent. Run detached
+		sub.initTransport(None, self)
+		sub.run()
 
 	def setPlace(self):
 		raise MethodNotImplementedException()
