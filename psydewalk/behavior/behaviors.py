@@ -1,6 +1,5 @@
 from psydewalk.pedestrian import Pedestrian
 from psydewalk.driver import Driver
-from psydewalk.place.places import *
 from psydewalk.data import LocationProvider, PlaceProvider
 from psydewalk.util.list import intersect
 from psydewalk.exception import MethodNotImplementedException, NoTransportException
@@ -32,10 +31,17 @@ class Behavior():
 		self.parent = parent
 		self.timelimit = timelimit
 		self.queue = []
+		self.terminated = False
 		self.init()
 
+	def getTimeLeft(self):
+		return self.timelimit - self.mngr.getHuman().getSimulation().getDatetime()
+
+	def terminate(self):
+		self.terminated = True
+
 	def init(self):
-		"""Performs pre instanziation initialisation (dynamic sub-behaviors and such)"""
+		"""Performs pre instantiation initialisation (dynamic sub-behaviors and such)"""
 		pass
 
 	def initPrev(self, prev):
@@ -54,18 +60,19 @@ class Behavior():
 
 	def subNext(self):
 		if len(self.queue) == 0:
-			self.run()
 			if self.parent:
 				self.parent.subNext()
 			else:
 				return #self.mngr.runNext(self)
-		sub = self.queue.pop(0)
-		sub.run()
+		else:
+			sub = self.queue.pop(0)
+			sub.run()
 
 	def run(self):
 		self.mngr.setBehavior(self)
 		self.preSub()
 		self.subNext()
+		self.mngr.setBehavior(self)
 		self.postSub()
 
 class LocatedBehavior(Behavior, LocationProvider):

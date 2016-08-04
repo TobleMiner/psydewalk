@@ -132,6 +132,8 @@ class BehaviorManager():
 
 	def runNext(self, prev):
 		behavior = self.next
+		if prev:
+			prev.terminate()
 		if not behavior:
 			behavior = self.getNextBehavior(prev)[0]
 		self.logger.debug('Starting behavior: {0}'.format(behavior))
