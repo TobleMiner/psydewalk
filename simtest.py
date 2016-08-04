@@ -7,7 +7,7 @@ from psydewalk.tracking import TrackingServer
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 sim = Simulation()
 human = Human(sim, Coordinate(54.355474, 10.131083))
