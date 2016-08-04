@@ -29,6 +29,7 @@ class Behavior():
 		pass
 
 	def __init__(self, mngr, parent=None, deadline=None):
+		self.logger = logging.getLogger(type(self).__name__)
 		self.mngr = mngr
 		self.parent = parent
 		self.deadline = deadline
@@ -45,6 +46,7 @@ class Behavior():
 	def terminate(self):
 		if self.terminated:
 			return
+		self.logger.warning('Behavior {0} failed to terminate in time. Terminating'.format(self))
 		self.queue.clear()
 		mode = self.mngr.getHuman().getMode()
 		if mode:

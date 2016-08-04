@@ -64,7 +64,7 @@ class BehaviorManager():
 
 	def getRandomBehavior(self):
 		from psydewalk.behavior.behaviors import Work
-		return Work
+		return Work # return 4 TODO?DEBUG
 		return random.choice(self.behaviors)
 
 	def __repr__(self):
@@ -150,9 +150,9 @@ class BehaviorManager():
 		self.run(behavior)
 
 	def run(self, behavior):
-		self.lock.aquire()
+		self.behaviorLock.acquire()
 		behavior.run()
-		self.lock.release()
+		self.behaviorLock.release()
 
 	def setBehavior(self, behavior):
 		self.logger.info('Setting behavior: ' + type(behavior).__name__)

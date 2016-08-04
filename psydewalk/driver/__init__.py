@@ -8,8 +8,7 @@ from pyroutelib2.loadOsm import LoadOsm
 
 import asyncio
 from asyncio import Queue
-from threading import Thread
-from threading import Lock
+from threading import Thread, Lock
 
 
 class Driver(SmoothMovingEntity, DataProvider, Jitter):
@@ -47,6 +46,8 @@ class Driver(SmoothMovingEntity, DataProvider, Jitter):
 				self.setSpeed(0, True)
 				break # TODO?MID Temporary, needs callbacks and a worker
 			waypoint = self.loop.run_until_complete(self.waypoints.get())
+			if self.doTerminate:
+				break
 			self.logger.info('Moving to {0}'.format(waypoint))
 			self.moveTo(waypoint, interval)
 			self.logger.info('Reached {0}'.format(waypoint))
