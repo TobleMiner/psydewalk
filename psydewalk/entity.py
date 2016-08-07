@@ -90,8 +90,6 @@ class NavigateableTrackableEntity(SmoothMovingEntity, TrackingProvider):
 		self.doTerminate = False
 		self.terminated = False
 		self.running = False
-		self.preRunLock = Lock()
-		self.preRunLock.acquire()
 		self.runLock = Lock()
 		self.stateLock = Lock()
 		self.osm = LoadOsm(osmmode)
@@ -121,40 +119,39 @@ class NavigateableTrackableEntity(SmoothMovingEntity, TrackingProvider):
 		self.loop.run_until_complete(self.waypoints.put(coord))
 
 	def run(self, interval=50):
-		try:
-			self.runLock.acquire()
-			self.preRunLock.release()
-			self.logger.info('Starting @{0}'.format(self.loc))
-			while True:
-				self.stateLock.acquire()
-				self.running = True
-				if self.waypoints.empty():
-					self.setSpeed(0, True)
-					break # TODO?MID Temporary, needs callbacks and a worker
-				waypoint = self.loop.run_until_complete(self.waypoints.get())
-				if self.doTerminate:
-					self.logger.debug('Terminating navigation loop')
-					break
-				self.logger.info('Moving to {0}'.format(waypoint))
-				self.moveTo(waypoint, interval)
-				self.logger.info('Reached {0}'.format(waypoint))
-				self.stateLock.release()
-			self.logger.debug('Navigation loop terminated')
-			self.logger.debug(self.terminated)
-			self.terminated = True
-			self.logger.debug(self.terminated)
-			self.runLock.release()
+		self.runLock.acquire()
+		self.logger.info('Starting @{0}'.format(self.loc))
+		while True:
+			self.stateLock.acquire()
+			self.running = True
+			if self.waypoints.empty():
+				self.setSpeed(0, True)
+				break # TODO?MID Temporary, needs callbacks and a worker
+			waypoint = self.loop.run_until_complete(self.waypoints.get())
+			if self.doTerminate:
+				self.logger.debug('Terminating navigation loop')
+				break
+			self.logger.info('Moving to {0}'.format(waypoint))
+			self.moveTo(waypoint, interval)
+			self.logger.info('Reached {0}'.format(waypoint))
 			self.stateLock.release()
-		except Error as err:
-			print(err)
-			raise err
+		self.logger.debug('Navigation loop terminated')
+		self.logger.debug(self.terminated)
+		self.terminated = True
+		self.logger.debug(self.terminated)
+		self.runLock.release()
+		self.stateLock.release()
 
 	def terminate(self):
-		if self.terminated:
-			return True
 		self.stateLock.acquire()
-		if not self.running:
+		if self.terminated:
+			self.stateLock.release()
 			return True
 		self.doTerminate = True
+		if not self.running:
+			self.stateLock.release()
+			self.terminated = True
+			return True
 		self.stateLock.release()
 		self.runLock.acquire()
+		self.runLock.release()
