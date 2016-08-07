@@ -6,16 +6,25 @@ class DataProvider():
 
 class LocationProvider():
 	"""docstring for LocationProvider"""
-	def __init__(self):
-		super(LocationProvider, self).__init__()
 
 	def getLocation(self):
 		raise MethodNotImplementedException()
 
 class PlaceProvider():
 	"""docstring for PlaceProvider"""
-	def __init__(self):
-		super(PlaceProvider, self).__init__()
 
 	def getPlace(self):
 		raise MethodNotImplementedException()
+
+class SpeedProvider():
+	"""docstring for SpeedProvider"""
+
+	def getSpeed(self):
+		raise MethodNotImplementedException()
+
+
+class TrackingProvider(LocationProvider):
+	"""docstring for TrackingProvider"""
+	def __init__(self, arg):
+		super(TrackingProvider, self).__init__()
+		self.arg = arg

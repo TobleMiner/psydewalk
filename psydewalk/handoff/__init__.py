@@ -1,3 +1,5 @@
+from psydewalk.handoff.handoffs import *
+
 import logging
 
 class HandoffManager():
@@ -6,34 +8,25 @@ class HandoffManager():
 		super(HandoffManager, self).__init__()
 		self.behaviorManager = mngr
 		self.logger = logging.getLogger(logger)
-		handoffs = []
+		self.handoffs = []
 		self.logger.info('Collecting handoffs')
-		self.collectHandoffs()
+		self.collectHandoffs(Handoff)
+		self.activations = {}
+		self.logger.info('Building activation graph')
+		self.buildActivationGraph(Handoff)
 
-	def collectHandoffs(self, cls=Handoff):
+	def collectHandoffs(self, cls):
 		self.logger.debug(cls)
 		self.handoffs.append(cls)
 		for child in cls.__subclasses__():
 			self.collectHandoffs(child)
 
-
-class Handoff():
-	"""docstring for Handoff"""
-	def __init__(self):
-		super(Handoff, self).__init__()
-
-	def interrupt(self):
-		"""Temporary interruption, execution might continue. Don't return from run"""
-		pass
-
-	def notify(self):
-		"""Continue execution. Only called after interrupt was called. Don't assume anything about simulation state, recheck everything"""
-		pass
-
-	def run(self):
-		"""Main function. Returning from this function terminates the handoff"""
-		pass
-
-	def terminate(self):
-		"""Termination. Return from run as soon as possible"""
-		pass
+	def buildActivationGraph(self, cls):
+		for activation in cls.DURING if isinstance(cls.DURING, list) else [cls.DURING]:
+			activation = self.behaviorManager.getBehavior(activation)
+			self.logger.debug('{0} -> {1}'.format(activation, cls))
+			if not activation in self.activations:
+				self.activations[activation] = []
+			self.activations[activation].append(cls)
+		for child in cls.__subclasses__():
+			self.buildActivationGraph(child)

@@ -5,6 +5,7 @@ import logging
 
 from psydewalk.behavior.behaviors import Behavior
 from psydewalk.async import Alarm
+from psydewalk.handoff import HandoffManager
 
 class BehaviorManager():
 	def __init__(self, human, logger='Behavior'):
@@ -24,6 +25,7 @@ class BehaviorManager():
 		self.buildGroupGraph(Behavior)
 		self.logger.info('Data assembled')
 		self.logger.debug(repr(self))
+		self.handoff = HandoffManager(self)
 		self.behaviorLock = Lock()
 		self.next = None
 		self.alarm = None
@@ -135,10 +137,12 @@ class BehaviorManager():
 		behavior = self.next
 		if prev:
 			prev.terminate()
+		self.behaviorLock.acquire()
 		if not behavior:
 			behavior = self.getNextBehavior(type(prev) if prev else None)[0]
 		self.logger.debug('Starting behavior: {0}'.format(behavior))
 		self.next, time = self.getNextBehavior(behavior)
+		time = self.human.getSimulation().getDatetime() + timedelta(seconds=20)
 		behavior = behavior(self, deadline=time)
 		self.alarm = Alarm(self.human.getSimulation())
 		self.logger.debug('Deadline for {0} set: {1}'.format(behavior, time))
@@ -148,11 +152,10 @@ class BehaviorManager():
 		behavior.initPrev(prev)
 		behavior.initSub()
 		self.run(behavior)
+		self.behaviorLock.release()
 
 	def run(self, behavior):
-		self.behaviorLock.acquire()
 		behavior.run()
-		self.behaviorLock.release()
 
 	def setBehavior(self, behavior):
 		self.logger.info('Setting behavior: ' + type(behavior).__name__)

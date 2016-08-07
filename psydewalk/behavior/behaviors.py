@@ -8,6 +8,7 @@ import psydewalk.place.places as PLACES
 from time import sleep
 from datetime import time, timedelta, datetime
 from collections import deque
+from threading import Lock
 import random
 import logging
 
@@ -35,6 +36,9 @@ class Behavior():
 		self.deadline = deadline
 		self.queue = deque()
 		self.terminated = False
+		self.doTerminate = False
+		self.sub = None
+		self.subLock = Lock()
 		self.init()
 
 	def setDeadline(self, deadline):
@@ -46,16 +50,23 @@ class Behavior():
 	def terminate(self):
 		if self.terminated:
 			return
+		self.doTerminate = True
 		self.logger.warning('Behavior {0} failed to terminate in time. Terminating'.format(self))
+		self.subLock.acquire()
 		self.queue.clear()
+		if self.sub:
+			self.sub.terminate()
 		mode = self.mngr.getHuman().getMode()
 		if mode:
+			self.logger.debug('Got mode {0} Terminated: {1}'.format(mode, mode.terminated))
+			self.logger.debug('Terminating mode')
 			mode.terminate()
+			assert mode.terminated, "Mode didn't terminate"
 		self.cleanup()
 
 	def cleanup(self):
 		"""Perform cleanup"""
-		pass
+		self.logger.debug('Cleaning up {0}'.format(self))
 
 	def init(self):
 		"""Performs pre instantiation initialisation (dynamic sub-behaviors and such)"""
@@ -66,7 +77,7 @@ class Behavior():
 		pass
 
 	def initSub(self):
-		for sub in self.ORDER:
+		for sub in self.ORDER if isinstance(self.ORDER, list) else [self.ORDER]:
 			self.queue.append(sub(self.mngr, self))
 
 	def preSub(self):
@@ -76,18 +87,25 @@ class Behavior():
 		pass
 
 	def subNext(self):
+		if self.doTerminate:
+			return
 		if len(self.queue) == 0:
-			if not self.parent:
-				return
-			self.parent.subNext()
+			if self.parent:
+				self.parent.subNext()
 		else:
-			sub = self.queue.popleft()
-			sub.run()
+			self.subLock.acquire()
+			self.sub = self.queue.popleft()
+			self.subLock.release()
+			self.sub.run()
 
 	def run(self):
 		self.mngr.setBehavior(self)
+		if self.doTerminate:
+			return
 		self.preSub()
 		self.subNext()
+		if self.doTerminate:
+			return
 		self.mngr.setBehavior(self)
 		self.postSub()
 		self.terminated = True
@@ -100,6 +118,7 @@ class LocatedBehavior(Behavior, LocationProvider):
 		self.setLocation()
 
 	def cleanup(self):
+		super(LocatedBehavior, self).cleanup()
 		sub = TransportBehavior(self.mngr) # Don't set parent. Run detached
 		sub.initTransport(None, self)
 		sub.run()
@@ -124,6 +143,7 @@ class PlacedBehavior(Behavior, PlaceProvider):
 		self.setPlace()
 
 	def cleanup(self):
+		super(PlacedBehavior, self).cleanup()
 		sub = TransportBehavior(self.mngr) # Don't set parent. Run detached
 		sub.initTransport(None, self)
 		sub.run()
@@ -169,7 +189,9 @@ class TransportBehavior(Behavior):
 			pass
 		if len(transports) == 0:
 			raise NoTransportException()
+		from psydewalk.transport.transports import Car
 		transport = random.choice(transports)
+		transports = Car
 		self.logger.debug('Choosen transport: {0}'.format(transport))
 		behavior = self.mngr.getBehavior(transport.BEHAVIOR)
 		if transport.PLACE:
@@ -225,7 +247,7 @@ class Break(Behavior):
 
 class Work(PlacedBehavior): # TODO Build sequencing for sub-behaviors (drive to work, work, lunch break, work, drive home/somewhere else). Allow mode behaviors to add a hook onto behaviors/groups so they can activate based on those. Maybe also account for national holidays?
 	"""docstring for Work"""
-	DOW = range(0, 5)
+	DOW = range(0, 7)
 	ACTIVATE = (time(6,30), time(7,20)) # A single tuple indicates that this is the same for all days in a week. If it is an array of tupels each single tuple is used for the corresponding day of week
 	GROUP = ('work', 0.95)
 	MODE = Pedestrian

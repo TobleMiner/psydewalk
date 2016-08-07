@@ -4,8 +4,6 @@ from psydewalk.transport.transports import *
 from psydewalk.place.places import *
 from psydewalk.place import PlaceRegistry
 
-__all__ = ['pedestrian', 'tracking']
-
 class Simulation():
 	"""docstring for Simulation"""
 	def __init__(self):

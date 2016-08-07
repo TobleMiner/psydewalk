@@ -6,7 +6,7 @@ class Home(Place): # TODO?LOW Unserialize palces from human readable config file
 	def __init__(self):
 		from psydewalk.transport.transports import Bike, Bus, Foot, Car
 		super(Home, self).__init__([Bike, Bus, Foot, Car])
-		self.loc = Coordinate(54.358245, 10.130768)
+		self.loc = Coordinate(54.358255, 10.130676)
 		self.subplaces = {
 			ParkingLot: ParkingLot(Coordinate(54.358234, 10.131358)),
 			BikeRack: BikeRack(Coordinate(54.358315, 10.130948)),
